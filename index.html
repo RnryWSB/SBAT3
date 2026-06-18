@@ -5,21 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBA Geometry Calculator</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; background: #f4f4f9; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; }
-        select, input, button { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
-        button { background: #0078d4; color: white; border: none; cursor: pointer; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; }
+        select, input, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { background: #0078d4; color: white; border: none; cursor: pointer; font-weight: bold; }
         button:hover { background: #005a9e; }
-        #result { font-weight: bold; color: #0078d4; text-align: center; }
+        #result { font-weight: bold; color: #0078d4; text-align: center; margin-top: 15px; font-size: 1.1em; }
+        .version { color: #888; font-size: 0.8em; text-align: center; margin-bottom: 15px; }
     </style>
 </head>
 <body>
     <div class="card">
+        <div class="version">Version 2 (Azure API Ready)</div>
         <h2>Kalkulator Figur</h2>
+        
         <select id="shape" onchange="updateInputs()">
             <option value="square">Kwadrat (Pole)</option>
             <option value="triangle">Trójkąt (Pole)</option>
             <option value="circle">Koło (Pole)</option>
+            <option value="rectangle">Prostokąt (Pole)</option>
         </select>
 
         <div id="inputs">
@@ -34,32 +38,55 @@
     <script>
         function updateInputs() {
             const shape = document.getElementById('shape').value;
-            const v2 = document.getElementById('val2');
             const v1 = document.getElementById('val1');
+            const v2 = document.getElementById('val2');
             
-            if (shape === 'triangle') {
+            v2.style.display = 'none'; // Domyślnie ukryj drugie pole
+
+            if (shape === 'square') {
+                v1.placeholder = "Bok a";
+            } else if (shape === 'triangle') {
                 v1.placeholder = "Podstawa a";
+                v2.placeholder = "Wysokość h";
                 v2.style.display = 'block';
             } else if (shape === 'circle') {
                 v1.placeholder = "Promień r";
-                v2.style.display = 'none';
-            } else {
-                v1.placeholder = "Bok a";
-                v2.style.display = 'none';
+            } else if (shape === 'rectangle') {
+                v1.placeholder = "Szerokość";
+                v2.placeholder = "Wysokość";
+                v2.style.display = 'block';
             }
         }
 
-        function calculate() {
+        async function calculate() {
             const shape = document.getElementById('shape').value;
-            const v1 = parseFloat(document.getElementById('val1').value);
-            const v2 = parseFloat(document.getElementById('val2').value);
-            let area = 0;
+            const val1 = parseFloat(document.getElementById('val1').value);
+            const val2 = parseFloat(document.getElementById('val2').value);
+            
+            // Mapowanie danych na format oczekiwany przez Python Function App
+            let data = {};
+            if (shape === 'square') data = { side: val1 };
+            else if (shape === 'triangle') data = { base: val1, height: val2 };
+            else if (shape === 'circle') data = { radius: val1 };
+            else if (shape === 'rectangle') data = { width: val1, height: val2 };
 
-            if (shape === 'square') area = v1 * v1;
-            if (shape === 'triangle') area = 0.5 * v1 * v2;
-            if (shape === 'circle') area = Math.PI * Math.pow(v1, 2);
+            const apiUrl = 'sbarnry-fzctb4aqe9bqhahc.swedencentral-01.azurewebsites.net';
 
-            document.getElementById('result').innerText = isNaN(area) ? "Wpisz poprawne dane" : "Wynik: " + area.toFixed(2);
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shape: shape, data: data })
+                });
+
+                if (!response.ok) throw new Error("Błąd serwera");
+
+                const result = await response.json();
+                document.getElementById('result').innerText = "Wynik: " + result.area.toFixed(2);
+            } catch (error) {
+                document.getElementById('result').innerText = "Błąd połączenia z API";
+                console.error("Szczegóły błędu:", error);
+            }
         }
     </script>
 </body>
